@@ -17,6 +17,9 @@ from datetime import timedelta
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+WAV2LIP_INFERENCE_DIR = os.path.join(BASE_DIR, "Wav2Lip")
+WAV2LIP_CHECKPOINT_PATH = os.path.join(WAV2LIP_INFERENCE_DIR, "checkpoints", "wav2lip_gan.pth")
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -206,3 +209,21 @@ CELERY_TIMEZONE = 'UTC'
 CELERY_IMPORTS = [
     'admin_finetune.tasks',
 ]
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',  # This tells Django to show INFO messages
+    },
+}
+# settings.py
+
+# Path to the Python executable in the Chatterbox conda environment
+CONDA_PYTHON_PATH = "/venv/chatterbox/bin/python"

@@ -1,0 +1,5 @@
+nohup ollama serve &
+
+ chmod +x start_servers.sh
+
+  ./start_servers.sh

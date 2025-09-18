@@ -1,0 +1,189 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Generate Video with Llama3's Answer</title>
+    <style>
+        body { font-family: sans-serif; margin: 40px; background-color: #f8f9fa; text-align: center; }
+        .container { background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }
+        h2 { color: #333; }
+        label { font-weight: bold; }
+        input, select, textarea, button { width: 90%; padding: 10px; margin-top: 10px; border-radius: 5px; border: 1px solid #ccc; }
+        textarea { height: 80px; }
+        button { background-color: #007bff; color: white; cursor: pointer; font-size: 16px; margin-right: 5px; width: auto; }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #cccccc; cursor: not-allowed; }
+        #status { margin-top: 20px; font-weight: bold; }
+        #videoContainer video { max-width: 100%; margin-top: 20px; border-radius: 8px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Generate Video with Llama3's Answer</h2>
+        <p>Ask a question, and your speaker will answer it.</p>
+        
+        <label for="speaker_id">Speaker ID:</label><br>
+        <input type="text" name="speaker_id" id="speaker_id" placeholder="e.g., my_speaker_01" required>
+        <br><br>
+
+        <label for="languageSelect">Select Language for Voice Input & Answer:</label><br>
+        <select id="languageSelect" onchange="onLanguageChange()">
+            <option value="en-US">English</option>
+            <option value="hi-IN">Hindi</option>
+        </select>
+        <br><br>
+
+        <label for="prompt">Your Question for Llama3 (Type or use voice input):</label><br>
+        <textarea name="prompt" id="prompt" required></textarea>
+        <br><br>
+
+        <button id="startButton">Start Voice Input</button>
+        <button id="stopButton" disabled>Stop Recording</button>
+        <button id="clearButton">Clear Prompt</button>
+        <br><br>
+        
+        <button id="generateButton" style="background-color: #17a2b8; width: 90%;">Generate Llama Video</button>
+        
+        <div id="status">Ready.</div>
+        <div id="videoContainer"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const speakerIdInput = document.getElementById('speaker_id');
+            const languageSelect = document.getElementById('languageSelect');
+            const startButton = document.getElementById('startButton');
+            const stopButton = document.getElementById('stopButton');
+            const clearButton = document.getElementById('clearButton');
+            const generateButton = document.getElementById('generateButton');
+            const promptOutput = document.getElementById('prompt'); // This now targets the prompt textarea
+            const statusDiv = document.getElementById('status');
+            const videoContainer = document.getElementById('videoContainer');
+
+            // --- Web Speech Recognition Logic ---
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                statusDiv.textContent = "Speech Recognition not supported in this browser.";
+                startButton.disabled = true;
+                return;
+            }
+            const recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = languageSelect.value;
+            let finalTranscript = '';
+
+            recognition.onstart = () => {
+                statusDiv.textContent = 'Listening...';
+                startButton.disabled = true;
+                stopButton.disabled = false;
+                generateButton.disabled = true;
+                promptOutput.value = '';
+                finalTranscript = '';
+                videoContainer.innerHTML = '';
+            };
+
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript + ' ';
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
+                }
+                promptOutput.value = finalTranscript + interimTranscript;
+            };
+
+            recognition.onerror = (event) => {
+                statusDiv.textContent = `Speech recognition error: ${event.error}`;
+                startButton.disabled = false;
+                stopButton.disabled = true;
+            };
+
+            recognition.onend = () => {
+                statusDiv.textContent = 'Recording stopped. Review prompt and click \'Generate Llama Video\'.';
+                startButton.disabled = false;
+                stopButton.disabled = true;
+                generateButton.disabled = !promptOutput.value.trim();
+                promptOutput.value = finalTranscript.trim();
+            };
+            
+            startButton.onclick = () => {
+                finalTranscript = '';
+                promptOutput.value = '';
+                recognition.start();
+            };
+
+            stopButton.onclick = () => {
+                recognition.stop();
+            };
+
+            clearButton.onclick = () => {
+                promptOutput.value = '';
+                finalTranscript = '';
+                statusDiv.textContent = 'Prompt cleared.';
+                generateButton.disabled = true;
+            };
+
+            window.onlanguageChange = () => {
+                recognition.lang = languageSelect.value;
+                statusDiv.textContent = `Language changed.`;
+            };
+
+            // --- Video Generation Logic for Llama ---
+            generateButton.onclick = async () => {
+                const promptToSend = promptOutput.value.trim();
+                const speakerId = speakerIdInput.value.trim();
+                const lang = languageSelect.value.startsWith('hi') ? 'hi' : 'en';
+
+                if (!promptToSend || !speakerId) {
+                    statusDiv.textContent = 'Prompt and Speaker ID are required.';
+                    return;
+                }
+
+                statusDiv.textContent = 'Getting answer from Llama3 and generating video...';
+                generateButton.disabled = true;
+                startButton.disabled = true;
+                videoContainer.innerHTML = '';
+
+                const formData = new FormData();
+                // ✅ CHANGED: Send "prompt" instead of "text"
+                formData.append('prompt', promptToSend); 
+                formData.append('speaker_id', speakerId);
+                formData.append('lang', lang);
+
+                try {
+                    // ✅ CHANGED: Call the correct API endpoint
+                    const response = await fetch('/api/generate_video_from_llama/', {
+                        method: 'POST',
+                        body: formData,
+                    });
+
+                    if (response.ok) {
+                        const videoBlob = await response.blob();
+                        const videoUrl = URL.createObjectURL(videoBlob);
+                        videoContainer.innerHTML = `<video controls autoplay src="${videoUrl}"></video><br><a href="${videoUrl}" download="llama_video.mp4">Download Video</a>`;
+                        statusDiv.textContent = 'Video generated successfully!';
+                        statusDiv.style.color = 'green';
+                    } else {
+                        const errorResult = await response.json();
+                        statusDiv.textContent = `Error: ${errorResult.error || 'Something went wrong.'}`;
+                        statusDiv.style.color = 'red';
+                    }
+                } catch (error) {
+                    statusDiv.textContent = 'A network error occurred.';
+                    statusDiv.style.color = 'red';
+                    console.error('Error:', error);
+                } finally {
+                    startButton.disabled = false;
+                    generateButton.disabled = true;
+                }
+            };
+        });
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Step 1: Create Speaker Profile</title>
+    <style>
+        body { font-family: sans-serif; margin: 40px; background-color: #f8f9fa; text-align: center; }
+        .container { background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }
+        h2 { color: #333; }
+        label { font-weight: bold; }
+        input, button { width: 90%; padding: 10px; margin-top: 10px; border-radius: 5px; border: 1px solid #ccc; }
+        button { background-color: #28a745; color: white; cursor: pointer; font-size: 16px; }
+        button:hover { background-color: #218838; }
+        #status { margin-top: 20px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Step 1: Create a New Speaker Profile</h2>
+        <p>Upload a short (10-15 second) video of the person speaking clearly.</p>
+        <form id="profileForm">
+            <div>
+                <label for="video">Upload Video File:</label><br>
+                <input type="file" name="video" id="video" accept="video/*" required>
+            </div>
+            <br>
+            <div>
+                <label for="speaker_id">Create a Unique Speaker ID:</label><br>
+                <input type="text" name="speaker_id" id="speaker_id" placeholder="e.g., my_speaker_01" required>
+            </div>
+            <button type="submit">Create Profile</button>
+        </form>
+        <div id="status"></div>
+    </div>
+
+    <script>
+        const form = document.getElementById('profileForm');
+        const statusDiv = document.getElementById('status');
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const formData = new FormData(form);
+            statusDiv.textContent = 'Creating profile, please wait...';
+            statusDiv.style.color = 'blue';
+
+            try {
+                const response = await fetch('/api/create_speaker_profile/', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    statusDiv.textContent = `Success! Profile created for Speaker ID: ${result.speaker_id}`;
+                    statusDiv.style.color = 'green';
+                } else {
+                    statusDiv.textContent = `Error: ${result.error || 'Something went wrong.'}`;
+                    statusDiv.style.color = 'red';
+                }
+            } catch (error) {
+                statusDiv.textContent = 'A network error occurred.';
+                statusDiv.style.color = 'red';
+                console.error('Error:', error);
+            }
+        });
+    </script>
+
+</body>
+</html>

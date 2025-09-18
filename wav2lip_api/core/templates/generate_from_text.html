@@ -1,205 +1,86 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Input to Avatar Video</title>
+    <title>Step 2: Generate Video from Text</title>
     <style>
-        body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; }
-        .container { background-color: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 600px; margin: 20px auto; }
-        h2 { text-align: center; color: #333; margin-bottom: 25px; }
-        label { display: block; margin-bottom: 8px; font-weight: bold; color: #555; }
-        input[type="text"] { width: calc(100% - 22px); padding: 10px; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        button { background-color: #007bff; color: white; padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; margin-right: 10px; }
+        body { font-family: sans-serif; margin: 40px; background-color: #f8f9fa; text-align: center; }
+        .container { background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }
+        h2 { color: #333; }
+        label { font-weight: bold; }
+        input, select, textarea, button { width: 90%; padding: 10px; margin-top: 10px; border-radius: 5px; border: 1px solid #ccc; }
+        textarea { height: 80px; }
+        button { background-color: #007bff; color: white; cursor: pointer; font-size: 16px; }
         button:hover { background-color: #0056b3; }
-        button:disabled { background-color: #cccccc; cursor: not-allowed; }
-        #status { margin-top: 20px; padding: 10px; border-radius: 4px; background-color: #e9ecef; color: #333; text-align: center; }
-        #videoOutput { margin-top: 30px; text-align: center; }
-        #videoOutput video { max-width: 100%; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
-        #output {
-            padding: 10px;
-            margin-top: 15px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            min-height: 80px;
-            background-color: #fff;
-            overflow-y: auto;
-        }
-        select {
-            padding: 8px;
-            margin-bottom: 15px;
-            border-radius: 4px;
-            border: 1px solid #ddd;
-        }
+        #status { margin-top: 20px; font-weight: bold; }
+        #videoContainer video { max-width: 100%; margin-top: 20px; border-radius: 8px; }
     </style>
 </head>
 <body>
+
     <div class="container">
-        <h2>Speak to Your Avatar</h2>
-
-        <label for="speakerId">Speaker ID:</label>
-        <input type="text" id="speakerId" value="default" required><br><br>
-
-        <label for="languageSelect">Select Language for Speech Recognition:</label>
-        <select id="languageSelect" onchange="onLanguageChange()">
-            <option value="en-US">English (US)</option>
-            <option value="en-IN">English (India)</option>
-            <option value="hi-IN">Hindi (India)</option>
-        </select><br><br>
-
-        <button id="startButton">Start Voice Input</button>
-        <button id="stopButton" disabled>Stop Recording</button>
-        <button id="clearButton">Clear Text</button>
-        <button id="generateButton" disabled>Generate Video</button>
-
-        <div id="output" contentEditable="true" placeholder="Speak here..."></div>
-        <div id="status">Ready. Click 'Start Voice Input'</div>
-
-        <div id="videoOutput"></div>
+        <h2>Step 2: Generate Video from Your Text</h2>
+        <p>Use a Speaker ID you created in Step 1.</p>
+        <form id="generateForm">
+            <div>
+                <label for="speaker_id">Speaker ID:</label><br>
+                <input type="text" name="speaker_id" id="speaker_id" placeholder="e.g., my_speaker_01" required>
+            </div>
+            <br>
+            <div>
+                <label for="text">Text to Speak:</label><br>
+                <textarea name="text" id="text" required></textarea>
+            </div>
+            <br>
+            <div>
+                <label for="lang">Language of Text:</label><br>
+                <select name="lang" id="lang">
+                    <option value="en">English</option>
+                    <option value="hi">Hindi</option>
+                </select>
+            </div>
+            <button type="submit">Generate Video</button>
+        </form>
+        <div id="status"></div>
+        <div id="videoContainer"></div>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', (event) => {
-            const speakerIdInput = document.getElementById('speakerId');
-            const languageSelect = document.getElementById('languageSelect');
-            const startButton = document.getElementById('startButton');
-            const stopButton = document.getElementById('stopButton');
-            const clearButton = document.getElementById('clearButton');
-            const generateButton = document.getElementById('generateButton');
-            const outputDiv = document.getElementById('output');
-            const statusDiv = document.getElementById('status');
-            const videoOutputDiv = document.getElementById('videoOutput');
+        const form = document.getElementById('generateForm');
+        const statusDiv = document.getElementById('status');
+        const videoContainer = document.getElementById('videoContainer');
 
-            // Initialize Web Speech Recognition
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) {
-                statusDiv.textContent = "Speech Recognition not supported in this browser. Please use Chrome, Edge, or Firefox.";
-                startButton.disabled = true;
-                return;
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const formData = new FormData(form);
+            statusDiv.textContent = 'Generating video, this may take a minute...';
+            statusDiv.style.color = 'blue';
+            videoContainer.innerHTML = '';
+
+            try {
+                const response = await fetch('/api/generate_video_from_text/', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (response.ok) {
+                    const videoBlob = await response.blob();
+                    const videoUrl = URL.createObjectURL(videoBlob);
+                    videoContainer.innerHTML = `<video controls autoplay src="${videoUrl}"></video><br><a href="${videoUrl}" download="generated_video.mp4">Download Video</a>`;
+                    statusDiv.textContent = 'Video generated successfully!';
+                    statusDiv.style.color = 'green';
+                } else {
+                    const errorResult = await response.json();
+                    statusDiv.textContent = `Error: ${errorResult.error || 'Something went wrong.'}`;
+                    statusDiv.style.color = 'red';
+                }
+            } catch (error) {
+                statusDiv.textContent = 'A network error occurred.';
+                statusDiv.style.color = 'red';
+                console.error('Error:', error);
             }
-            const recognition = new SpeechRecognition();
-            recognition.continuous = true;
-            recognition.interimResults = true;
-            recognition.lang = languageSelect.value;
-            let finalTranscript = '';
-
-            const getCsrfToken = () => {
-                return document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
-            };
-
-            const showVideo = (videoBlob) => {
-                const videoUrl = URL.createObjectURL(videoBlob);
-                videoOutputDiv.innerHTML = `<video controls autoplay src="${videoUrl}"></video>`;
-                statusDiv.textContent = 'Video generated successfully!';
-            };
-
-            recognition.onstart = () => {
-                statusDiv.textContent = 'Listening...';
-                startButton.disabled = true;
-                stopButton.disabled = false;
-                generateButton.disabled = true;
-                outputDiv.textContent = '';
-                finalTranscript = '';
-                videoOutputDiv.innerHTML = '';
-            };
-
-            recognition.onresult = (event) => {
-                let interimTranscript = '';
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    const transcript = event.results[i][0].transcript;
-                    if (event.results[i].isFinal) {
-                        finalTranscript += transcript + ' ';
-                    } else {
-                        interimTranscript += transcript;
-                    }
-                }
-                outputDiv.textContent = finalTranscript + interimTranscript;
-            };
-
-            recognition.onerror = (event) => {
-                statusDiv.textContent = `Speech recognition error: ${event.error}`;
-                console.error('Speech recognition error:', event.error);
-                startButton.disabled = false;
-                stopButton.disabled = true;
-                generateButton.disabled = true;
-            };
-
-            recognition.onend = () => {
-                statusDiv.textContent = 'Recording stopped. Review text and click \'Generate Video\'.';
-                startButton.disabled = false;
-                stopButton.disabled = true;
-                generateButton.disabled = false;
-                outputDiv.textContent = finalTranscript.trim();
-            };
-
-            startButton.onclick = () => {
-                finalTranscript = '';
-                outputDiv.textContent = '';
-                recognition.start();
-            };
-
-            stopButton.onclick = () => {
-                recognition.stop();
-            };
-
-            clearButton.onclick = () => {
-                outputDiv.textContent = '';
-                finalTranscript = '';
-                statusDiv.textContent = 'Text cleared.';
-                generateButton.disabled = true;
-            };
-
-            window.onlanguageChange = () => {
-                recognition.lang = languageSelect.value;
-                statusDiv.textContent = `Language changed to ${languageSelect.options[languageSelect.selectedIndex].text}`;
-            };
-
-            generateButton.onclick = async () => {
-                const textToSend = outputDiv.textContent.trim();
-                const speakerId = speakerIdInput.value.trim();
-                const lang = languageSelect.value.startsWith('hi') ? 'hi' : 'en';
-
-                if (!textToSend || !speakerId) {
-                    statusDiv.textContent = 'Text and Speaker ID are required.';
-                    return;
-                }
-
-                statusDiv.textContent = 'Sending text and generating video...';
-                generateButton.disabled = true;
-                startButton.disabled = true;
-
-                const formData = new FormData();
-                formData.append('text', textToSend);
-                formData.append('speaker_id', speakerId);
-                formData.append('lang', lang);
-
-                try {
-                    // Send a single POST request to the server.
-                    const response = await fetch('/api/generate/from-text/', {
-                        method: 'POST',
-                        body: formData,
-                        headers: {
-                            'X-CSRFToken': getCsrfToken()
-                        }
-                    });
-
-                    if (response.ok) {
-                        const videoBlob = await response.blob();
-                        showVideo(videoBlob);
-                    } else {
-                        const errorText = await response.text();
-                        statusDiv.textContent = `Error: ${errorText || response.statusText}`;
-                    }
-                } catch (error) {
-                    statusDiv.textContent = `An unexpected error occurred: ${error.message}`;
-                    console.error('Fetch error:', error);
-                } finally {
-                    startButton.disabled = false;
-                    generateButton.disabled = true;
-                }
-            };
         });
     </script>
+
 </body>
 </html>
